@@ -1,5 +1,5 @@
-# Python MPD client library
-# Copyright (C) 2008-2010  J. Alexander Treuman <jat@spatialrift.net>
+# Python MPD/iTunes library
+# Copyright (C) 2010 Nathan Charles
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -65,6 +65,7 @@ class iTDaemon(object):
         Begins playing the playlist at song number SONGPOS.
         """
         self.iTunes.play()
+        return True
     def pause(self, bool = 1):
         """
         pause {PAUSE}
@@ -74,16 +75,19 @@ class iTDaemon(object):
         The use of pause command w/o the PAUSE argument is deprecated.
         """
         self.iTunes.pause()
+        return True
     def next(self):
         """
         Plays next song in the playlist.
         """
         self.iTunes.next_track()
+        return True
     def previous(self):
         """
         Plays previous song in the playlist.
         """
         self.iTunes.previous_track()
+        return True
     def stop(self):
         """
         Stops playing.
@@ -113,6 +117,40 @@ class iTDaemon(object):
         error: if there is an error, returns message here
 
         volume: -1\nrepeat: 0\nrandom: 0\nsingle: 0\nconsume: 0\nplaylist: 2\nplaylistlength: 0\nxfade: 0\nstate: stop\nlist_OK\nOK\n
+
+        0.15.0
+        volume: 100
+        repeat: 0
+        random: 0
+        single: 0
+        consume: 0
+        playlist: 5
+        playlistlength: 3
+        xfade: 0
+        state: play
+        song: 0
+        songid: 0
+        time: 284:390
+        bitrate: 256
+        audio: 44100:24:2
+        nextsong: 1
+        nextsongid: 1
+
+        list_OK
+
+        file: Us vs Us/01 Banner.mp3
+        Time: 390
+        Artist: Psalters
+        Title: Banner
+        Album: Us vs Us
+        Track: 1/14
+        Date: 2004
+        Genre: World
+        Disc: 1/1
+        Pos: 0
+        Id: 0
+        list_OK
+        OK
         """
         repeat = {k.off: ["0","0"],
                 k.one:["1","1"],
@@ -134,7 +172,14 @@ class iTDaemon(object):
         ret += "playlistlength: %s\n" % self.iTunes.current_playlist.duration.get()  
         ret += "xfade: %s\n" % "0"
         ret += "state: %s\n" % state[self.iTunes.player_state.get()]
-        ret += "time: %s\n" % self.iTunes.player_position.get()
+        ret += "song: %s\n" % "1"
+        ret += "songid: %s\n" % "1"
+        ret += "time: %s:%s\n" % ( self.iTunes.player_position.get(), 
+                math.trunc(self.iTunes.current_track.duration.get()))
+        ret += "bitrate: %s\n" % "256"
+        ret += "audio: %s\n" % "44100:24:2"
+        ret += "nextsong: %s\n" % "2"
+        ret += "nextsongid: %s\n" % "2"
         return ret
     def stats(self):
         """
@@ -147,6 +192,7 @@ class iTDaemon(object):
         playtime: time length of music played
         """
         pass
+
     def currentsong(self):
         ret = "Time: %s\n" % math.trunc(self.iTunes.current_track.duration.get())
         ret += "Album: %s\n" % self.iTunes.current_track.album.get() 
@@ -155,29 +201,91 @@ class iTDaemon(object):
         ret += "Track: %s\n" % self.iTunes.current_track.track_number.get()
         ret += "Pos: %s\n" % self.iTunes.player_position.get()
         return ret
+    def plchanges(self, args):
+        pass
+
+    def lsinfo(self, args):
+        """
+        Usage 
+        lsinfo [<string directory>]
+        Purpose 
+        List contents of <string directory>, from the database.
+        Arguments
+        <string directory>
+        """
+        pass
+
+    def search(self, args):
+        """
+        search <string type> <string what>
+
+        search filename bastards_pick_wrong_man
+        file: vocal/onion_radio_news/the_onion_radio_news_-_bastards_pick_wrong_man.mp3
+        Time: 36
+        Artist: Onion Radio News 
+        Title: Bastards Pick Wrong Man to Mess With
+        Genre: Comedy
+        OK
+        """
+        print args
+
+        pass
+
 
     #PLAYBACK OPTIONS
-    def to_code():
+    def consume(self, args):
         """
-        Playback options
-
         consume {STATE}
         Sets consume state to STATE, STATE should be 0 or 1. When consume is activated, each song played is removed from playlist.
 
+        """
+        pass
+
+    def crossfade(self, args):
+        """
         crossfade {SECONDS}
         Sets crossfading between songs.
+        """
+        pass
 
+    def random(self, args):
+        """
         random {STATE}
         Sets random state to STATE, STATE should be 0 or 1.
 
+        song repeat (off/one/all) : playback repeat mode
+        """
+        pass
+
+    def repeat(self, args):
+        """
         repeat {STATE}
         Sets repeat state to STATE, STATE should be 0 or 1.
 
-        setvol {VOL}
-        Sets volume to VOL, the range of volume is 0-100.
+        song repeat (off/one/all) : playback repeat mode
+        """
+        state = { "off":0, "all":1}
+        self.iTunes.current_playlist.song_repeat.set(state[args])
 
+    def single(self, args):
+        """
         single {STATE}
         Sets single state to STATE, STATE should be 0 or 1. When single is activated, playback is stopped after current song, or song is repeated if the 'repeat' mode is enabled.
+        """
+        state = { "off":0, "one":1}
+        self.iTunes.current_playlist.song_repeat.set(state[args])
+
+
+    def setvol(self, args):
+        """
+        setvol {VOL}
+        Sets volume to VOL, the range of volume is 0-100.
+        """
+        self.iTunes.sound_volume.set(args)
+
+    def to_code():
+        """
+        Playback options
 
         replay_gain_mode {MODE}
         Sets the replay gain mode. One of off, track, album.
@@ -198,126 +306,178 @@ class MPDaemon(object):
         self.itd = iTDaemon()
         self._commands = {
             # Status Commands
-            "clearerror":       self._fetch_nothing,
+            "clearerror":       self._undefined,
             "currentsong":      self.itd.currentsong,
-            "idle":             self._fetch_list,
+            "idle":             self._undefined,
             "noidle":           None,
             "status":           self.itd.status,
-            "stats":            self._fetch_object,
+            "stats":            self._undefined,
             # Playback Option Commands
-            "consume":          self._fetch_nothing,
-            "crossfade":        self._fetch_nothing,
-            "random":           self._fetch_nothing,
-            "repeat":           self._fetch_nothing,
-            "setvol":           self._fetch_nothing,
-            "single":           self._fetch_nothing,
-            "volume":           self._fetch_nothing,
+            "consume":          self._undefined,
+            "crossfade":        self._undefined,
+            "random":           self.itd.random,
+            "repeat":           self.itd.repeat,
+            "setvol":           self.itd.setvol,
+            "single":           self.itd.single,
+            "volume":           self._undefined,
             # Playback Control Commands
             "next":             self.itd.next,
             "pause":            self.itd.pause,
             "play":             self.itd.play,
-            "playid":           self._fetch_nothing,
+            "playid":           self._undefined,
             "previous":         self.itd.previous,
-            "seek":             self._fetch_nothing,
-            "seekid":           self._fetch_nothing,
-            "stop":             self._fetch_nothing,
+            "seek":             self._undefined,
+            "seekid":           self._undefined,
+            "stop":             self._undefined,
             # Playlist Commands
-            "add":              self._fetch_nothing,
-            "addid":            self._fetch_item,
-            "clear":            self._fetch_nothing,
-            "delete":           self._fetch_nothing,
-            "deleteid":         self._fetch_nothing,
-            "move":             self._fetch_nothing,
-            "moveid":           self._fetch_nothing,
-            "playlist":         self._fetch_playlist,
-            "playlistfind":     self._fetch_songs,
-            "playlistid":       self._fetch_songs,
-            "playlistinfo":     self._fetch_songs,
-            "playlistsearch":   self._fetch_songs,
-            "plchanges":        self._fetch_songs,
-            "plchangesposid":   self._fetch_changes,
-            "shuffle":          self._fetch_nothing,
-            "swap":             self._fetch_nothing,
-            "swapid":           self._fetch_nothing,
+            "add":              self._undefined,
+            "addid":            self._undefined,
+            "clear":            self._undefined,
+            "delete":           self._undefined,
+            "deleteid":         self._undefined,
+            "move":             self._undefined,
+            "moveid":           self._undefined,
+            "playlist":         self._undefined,
+            "playlistfind":     self._undefined,
+            "playlistid":       self._undefined,
+            "playlistinfo":     self._undefined,
+            "playlistsearch":   self._undefined,
+            "plchanges":        self.itd.plchanges,
+            "plchangesposid":   self._undefined,
+            "shuffle":          self._undefined,
+            "swap":             self._undefined,
+            "swapid":           self._undefined,
             # Stored Playlist Commands
-            "listplaylist":     self._fetch_list,
-            "listplaylistinfo": self._fetch_songs,
-            "listplaylists":    self._fetch_playlists,
-            "load":             self._fetch_nothing,
-            "playlistadd":      self._fetch_nothing,
-            "playlistclear":    self._fetch_nothing,
-            "playlistdelete":   self._fetch_nothing,
-            "playlistmove":     self._fetch_nothing,
-            "rename":           self._fetch_nothing,
-            "rm":               self._fetch_nothing,
-            "save":             self._fetch_nothing,
+            "listplaylist":     self._undefined,
+            "listplaylistinfo": self._undefined,
+            "listplaylists":    self._undefined,
+            "load":             self._undefined,
+            "playlistadd":      self._undefined,
+            "playlistclear":    self._undefined,
+            "playlistdelete":   self._undefined,
+            "playlistmove":     self._undefined,
+            "rename":           self._undefined,
+            "rm":               self._undefined,
+            "save":             self._undefined,
             # Database Commands
-            "count":            self._fetch_object,
-            "find":             self._fetch_songs,
-            "list":             self._fetch_list,
-            "listall":          self._fetch_database,
-            "listallinfo":      self._fetch_database,
-            "lsinfo":           self._fetch_database,
-            "search":           self._fetch_songs,
-            "update":           self._fetch_item,
+            "count":            self._undefined,
+            "find":             self._undefined,
+            "list":             self._undefined,
+            "listall":          self._undefined,
+            "listallinfo":      self._undefined,
+            "lsinfo":           self._undefined,
+            "search":           self.itd.search,
+            "update":           self._undefined,
             # Connection Commands
             "close":            None,
             "kill":             None,
-            "password":         self._fetch_nothing,
-            "ping":             self._fetch_nothing,
+            "password":         self._undefined,
+            "ping":             self._undefined,
             # Audio Output Commands
-            "disableoutput":    self._fetch_nothing,
-            "enableoutput":     self._fetch_nothing,
-            "outputs":          self._fetch_outputs,
+            "disableoutput":    self._undefined,
+            "enableoutput":     self._undefined,
+            "outputs":          self._undefined,
             # Reflection Commands
-            "commands":         self._fetch_list,
-            "notcommands":      self._fetch_list,
-            "tagtypes":         self._fetch_list,
-            "urlhandlers":      self._fetch_list,
+            "commands":         self._undefined,
+            "notcommands":      self._undefined,
+            "tagtypes":         self._undefined,
+            "urlhandlers":      self._undefined,
             # stuff
-            "command_list_ok_begin":    self._fetch_nothing,
-            "command_list_end":    self._fetch_nothing,
+            "command_list_ok_begin":    self._undefined,
+            "command_list_end":    self._undefined,
         }
-    def _fetch_list(self):
-        pass
-    def _fetch_nothing(self):
-        pass
-    def _fetch_object(self):
-        pass
-    def _fetch_item(self):
-        pass
-    def _fetch_songs(self):
-        pass
-    def _fetch_database(self):
-        pass
-    def _fetch_playlist(self):
-        pass
-    def _fetch_changes(self):
-        pass
-    def _fetch_playlists(self):
-        pass
-    def _fetch_outputs(self):
-        pass
+    def _undefined(self, attr=None):
+        print "undefined"
 
-    def command(self,command):
+    def command(self, command):
         retval = ''
+        if command.find('list_ok') is not -1:
+        	ListOK = True
+        else:
+        	ListOK = False
         if command not in self._commands:
             print command.strip().split('\n')
             command_list = command.strip().split('\n')
             for c in command_list:
-                print "running command: %s" % c
-                rc = self._commands[c]()
-                if rc:
-                    retval += rc + NEXT + "\n"
+            	cmd, sep, args = c.partition(' ')
+                print "running command: %s" % cmd
+                if c:
+                    if args:
+                        rc = self._commands[cmd](args)
+                    else:
+                        rc = self._commands[cmd]()
+                    if rc:
+                        retval += rc
+                        if ListOK:
+                            retval += NEXT + "\n"
         else:
             retval = self._commands[command]() 
         retval = retval + "OK" + '\n'
-        print retval
+        #print retval
         return retval
-
 
 def escape(text):
     return text.replace("\\", "\\\\").replace('"', '\\"')
 
+import SocketServer
+from sys import exit, argv
+version ='0.1'
+mpdport = 6600
 
-# vim: set expandtab shiftwidth=4 softtabstop=4 textwidth=79:
+mpd = MPDaemon()
+
+class iTDRequestHandler(SocketServer.BaseRequestHandler ):
+    def setup(self):
+        print self.client_address, 'connected!'
+        self.request.send('OK MPD ' + version + '\n')
+
+    def handle(self):
+        data = 'dummy'
+        while data:
+            data = self.request.recv(1024)
+            print data
+            #self.request.send(mpd.command(data))
+            ret = mpd.command(data)
+            print ret
+            self.request.send(ret)
+            if data.strip() == 'bye':
+                return
+
+    def finish(self):
+        print self.client_address, 'disconnected!'
+        self.request.send('bye ' + str(self.client_address) + '\n')
+
+
+def usage():
+    pass
+
+if __name__ == "__main__":
+    import getopt
+
+    opts, args = getopt.getopt(argv[1:], 'dfh')
+
+    if opts:
+        for o,a in opts:
+            if o == '-h':
+                usage()
+                exit(1)
+            if o == '-d':
+                #run in background
+                import daemon
+                daemon.daemonize()
+            if o == '-f':
+                #run in forground
+                print "Running in Foreground"
+    else:
+        usage()
+        exit(1)
+
+    try:
+        server = SocketServer.ThreadingTCPServer(('', mpdport), iTDRequestHandler)
+        server.serve_forever()
+
+
+    except (KeyboardInterrupt, SystemExit):
+        exit(1)
+    except:
+        raise

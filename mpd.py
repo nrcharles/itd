@@ -42,7 +42,9 @@ class IteratingError(MPDError):
 
 from appscript import *
 import math
-class iTDaemon(object):
+class iTunesModel(object):
+    """This class maps mpd keywords to iTunes applescript calls
+    """
     def __init__(self):
         self.iTunes = app('iTunes')
 
@@ -65,7 +67,8 @@ class iTDaemon(object):
         Begins playing the playlist at song number SONGPOS.
         """
         self.iTunes.play()
-        return True
+        #return True
+
     def pause(self, bool = 1):
         """
         pause {PAUSE}
@@ -75,24 +78,28 @@ class iTDaemon(object):
         The use of pause command w/o the PAUSE argument is deprecated.
         """
         self.iTunes.pause()
-        return True
+        #return True
+
     def next(self):
         """
         Plays next song in the playlist.
         """
         self.iTunes.next_track()
-        return True
+        #return True
+
     def previous(self):
         """
         Plays previous song in the playlist.
         """
         self.iTunes.previous_track()
-        return True
+        #return True
+        
     def stop(self):
         """
         Stops playing.
         """
         self.iTunes.stop()
+        #return True
 
     #STATUS
     def status(self):
@@ -181,6 +188,7 @@ class iTDaemon(object):
         ret += "nextsong: %s\n" % "2"
         ret += "nextsongid: %s\n" % "2"
         return ret
+
     def stats(self):
         """
         Displays statistics.
@@ -201,6 +209,7 @@ class iTDaemon(object):
         ret += "Track: %s\n" % self.iTunes.current_track.track_number.get()
         ret += "Pos: %s\n" % self.iTunes.player_position.get()
         return ret
+
     def plchanges(self, args):
         pass
 
@@ -300,32 +309,34 @@ class iTDaemon(object):
         pass
 
 
-class MPDaemon(object):
-    def __init__(self):
+class controller(object):
+    """This class impliments a controller that parses data into commands and handles executes those commands
+    """
+    def __init__(self, backend = iTunesModel()):
         self.iterate = False
-        self.itd = iTDaemon()
+        self.model = backend
         self._commands = {
             # Status Commands
             "clearerror":       self._undefined,
-            "currentsong":      self.itd.currentsong,
+            "currentsong":      self.model.currentsong,
             "idle":             self._undefined,
             "noidle":           None,
-            "status":           self.itd.status,
+            "status":           self.model.status,
             "stats":            self._undefined,
             # Playback Option Commands
             "consume":          self._undefined,
             "crossfade":        self._undefined,
-            "random":           self.itd.random,
-            "repeat":           self.itd.repeat,
-            "setvol":           self.itd.setvol,
-            "single":           self.itd.single,
+            "random":           self.model.random,
+            "repeat":           self.model.repeat,
+            "setvol":           self.model.setvol,
+            "single":           self.model.single,
             "volume":           self._undefined,
             # Playback Control Commands
-            "next":             self.itd.next,
-            "pause":            self.itd.pause,
-            "play":             self.itd.play,
+            "next":             self.model.next,
+            "pause":            self.model.pause,
+            "play":             self.model.play,
             "playid":           self._undefined,
-            "previous":         self.itd.previous,
+            "previous":         self.model.previous,
             "seek":             self._undefined,
             "seekid":           self._undefined,
             "stop":             self._undefined,
@@ -342,7 +353,7 @@ class MPDaemon(object):
             "playlistid":       self._undefined,
             "playlistinfo":     self._undefined,
             "playlistsearch":   self._undefined,
-            "plchanges":        self.itd.plchanges,
+            "plchanges":        self.model.plchanges,
             "plchangesposid":   self._undefined,
             "shuffle":          self._undefined,
             "swap":             self._undefined,
@@ -366,7 +377,7 @@ class MPDaemon(object):
             "listall":          self._undefined,
             "listallinfo":      self._undefined,
             "lsinfo":           self._undefined,
-            "search":           self.itd.search,
+            "search":           self.model.search,
             "update":           self._undefined,
             # Connection Commands
             "close":            None,
@@ -389,32 +400,38 @@ class MPDaemon(object):
     def _undefined(self, attr=None):
         print "undefined"
 
-    def command(self, command):
+    def _execute(self, command):
+        cmd, sep, args = command.partition(' ')
+        print "running command: %s" % cmd
+        if cmd:
+            if args:
+                return self._commands[cmd.strip()](args)
+            else:
+                return self._commands[cmd.strip()]()
+
+    def handle(self, command):
         retval = ''
         if command.find('list_ok') is not -1:
         	ListOK = True
         else:
         	ListOK = False
-        if command not in self._commands:
-            print command.strip().split('\n')
+        if command.find('command_list') is not -1:
             command_list = command.strip().split('\n')
+            print command_list
             for c in command_list:
-            	cmd, sep, args = c.partition(' ')
-                print "running command: %s" % cmd
                 if c:
-                    if args:
-                        rc = self._commands[cmd](args)
-                    else:
-                        rc = self._commands[cmd]()
+                    rc = self._execute(c)
                     if rc:
                         retval += rc
                         if ListOK:
                             retval += NEXT + "\n"
         else:
-            retval = self._commands[command]() 
-        retval = retval + "OK" + '\n'
-        #print retval
-        return retval
+            retval = self._execute(command) 
+        if retval:
+            return "%sOK\n" % retval
+        else:
+            return "OK\n"
+
 
 def escape(text):
     return text.replace("\\", "\\\\").replace('"', '\\"')
@@ -424,9 +441,11 @@ from sys import exit, argv
 version ='0.1'
 mpdport = 6600
 
-mpd = MPDaemon()
+mpd = controller()
 
 class iTDRequestHandler(SocketServer.BaseRequestHandler ):
+    """This class provides an interface which impliments the mpd spec
+    """
     def setup(self):
         print self.client_address, 'connected!'
         self.request.send('OK MPD ' + version + '\n')
@@ -437,15 +456,12 @@ class iTDRequestHandler(SocketServer.BaseRequestHandler ):
             data = self.request.recv(1024)
             print data
             #self.request.send(mpd.command(data))
-            ret = mpd.command(data)
+            ret = mpd.handle(data)
             print ret
             self.request.send(ret)
-            if data.strip() == 'bye':
-                return
 
     def finish(self):
         print self.client_address, 'disconnected!'
-        self.request.send('bye ' + str(self.client_address) + '\n')
 
 
 def usage():
@@ -453,7 +469,6 @@ def usage():
 
 if __name__ == "__main__":
     import getopt
-
     opts, args = getopt.getopt(argv[1:], 'dfh')
 
     if opts:
@@ -475,7 +490,6 @@ if __name__ == "__main__":
     try:
         server = SocketServer.ThreadingTCPServer(('', mpdport), iTDRequestHandler)
         server.serve_forever()
-
 
     except (KeyboardInterrupt, SystemExit):
         exit(1)

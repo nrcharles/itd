@@ -19,27 +19,6 @@ ERROR_PREFIX = "ACK "
 SUCCESS = "OK"
 NEXT = "list_OK"
 
-class MPDError(Exception):
-    pass
-
-class ConnectionError(MPDError):
-    pass
-
-class ProtocolError(MPDError):
-    pass
-
-class CommandError(MPDError):
-    pass
-
-class CommandListError(MPDError):
-    pass
-
-class PendingCommandError(MPDError):
-    pass
-
-class IteratingError(MPDError):
-    pass
-
 from appscript import *
 import math
 class iTunesModel(object):
@@ -491,13 +470,6 @@ class controller(object):
 def escape(text):
     return text.replace("\\", "\\\\").replace('"', '\\"').replace(' ',"_")
 
-import SocketServer
-from sys import exit, argv
-version ='0.1'
-mpdport = 6600
-
-mpd = controller()
-
 class iTDRequestHandler(SocketServer.BaseRequestHandler ):
     """This class provides an interface which impliments the mpd spec
     """
@@ -524,6 +496,8 @@ def usage():
 
 if __name__ == "__main__":
     import getopt
+    from sys import exit, argv
+
     opts, args = getopt.getopt(argv[1:], 'dfh')
 
     if opts:
@@ -543,6 +517,10 @@ if __name__ == "__main__":
         exit(1)
 
     try:
+        import SocketServer
+        version ='0.1'
+        mpdport = 6600
+        mpd = controller()
         server = SocketServer.ThreadingTCPServer(('', mpdport), 
                 iTDRequestHandler)
         server.serve_forever()

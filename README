@@ -1,0 +1,8 @@
+This is a fairly crude mpd implementation in python that uses iTunes as a 
+backend.  Lots of things don't work at this point I wrote it for my own fun. 
+However control works from the clients I tested.
+
+The basic architecture is a TCP/IP daemon is started and listens for clients.
+Commands from the client are then mapped to applescript calls and used to
+control iTunes.  A lot of functionalilty is currently missing due to lack of
+equivalent iTunes functionality.

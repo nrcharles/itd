@@ -19,14 +19,15 @@ ERROR_PREFIX = "ACK "
 SUCCESS = "OK"
 NEXT = "list_OK"
 
-from appscript import *
+import appscript
 import math
+import SocketServer
 class iTunesModel(object):
     """This class maps mpd keywords to iTunes applescript calls
     """
     def __init__(self):
         try:
-            self.iTunes = app('iTunes')
+            self.iTunes = appscript.app('iTunes')
         except:
             return -1
 
@@ -164,17 +165,17 @@ class iTunesModel(object):
         """
         cplaylist, ctrack = self._getstate()
 
-        repeat = {k.off: ["0","0"],
-                k.one:["1","1"],
-                k.all:["1","0"]}
+        repeat = {appscript.k.off: [0,0],
+                appscript.k.one:[1,1],
+                appscript.k.all:[1,0]}
         #stopped/playing/paused/fast forwarding/rewinding'
-        state = { k.stopped: "stop",
-                k.playing:  "play",
-                k.paused:   "pause",
-                k.fast_forwarding: "play",
-                k.rewinding: "play"}
-        random = { True : "1",
-                False : "0"}
+        state = { appscript.k.stopped: "stop",
+                appscript.k.playing:  "play",
+                appscript.k.paused:   "pause",
+                appscript.k.fast_forwarding: "play",
+                appscript.k.rewinding: "play"}
+        random = { True : 1,
+                False : 0}
 
         ret = "volume: %s\n"  % self.iTunes.sound_volume.get()
         ret += "repeat: %s\n" % repeat[cplaylist.song_repeat.get()][0]
@@ -496,15 +497,15 @@ def usage():
 
 if __name__ == "__main__":
     import getopt
-    from sys import exit, argv
+    import sys
 
-    opts, args = getopt.getopt(argv[1:], 'dfh')
+    opts, args = getopt.getopt(sys.argv[1:], 'dfh')
 
     if opts:
         for o,a in opts:
             if o == '-h':
                 usage()
-                exit(1)
+                sys.exit(1)
             if o == '-d':
                 #run in background
                 import daemon
@@ -514,10 +515,9 @@ if __name__ == "__main__":
                 print "Running in Foreground"
     else:
         usage()
-        exit(1)
+        sys.exit(1)
 
     try:
-        import SocketServer
         version ='0.1'
         mpdport = 6600
         mpd = controller()
@@ -526,6 +526,6 @@ if __name__ == "__main__":
         server.serve_forever()
 
     except (KeyboardInterrupt, SystemExit):
-        exit(1)
+        sys.exit(1)
     except:
         raise

@@ -439,10 +439,16 @@ class controller(object):
         cmd, sep, args = command.partition(' ')
         print "running command: %s" % cmd
         if cmd:
-            if args:
-                return self._commands[cmd.strip()](args)
-            else:
-                return self._commands[cmd.strip()]()
+            try:
+                if args:
+                    return self._commands[cmd.strip()](args)
+                    #return getattr(self.model, cmd.strip())(args)
+                else:
+                    return self._commands[cmd.strip()]()
+                    #return getattr(self.model, cmd.strip())(args)
+            except:
+                return self._undefined()
+                print "undefined"
 
     def handle(self, command):
         retval = ''
@@ -518,7 +524,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     try:
-        version ='0.1'
+        version ='0.16.0'
         mpdport = 6600
         mpd = controller()
         server = SocketServer.ThreadingTCPServer(('', mpdport), 
